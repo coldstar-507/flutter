@@ -3506,12 +3506,15 @@ class EditableTextState extends State<EditableText>
   // on, we need this offset to correctly render and move the cursor.
   Offset get _floatingCursorOffset => Offset(0, renderEditable.preferredLineHeight / 2);
 
+  double _amortizer = 10;
+  
   @override
   void updateFloatingCursor(RawFloatingCursorPoint point) {
     _floatingCursorResetController ??= AnimationController(vsync: this)
       ..addListener(_onFloatingCursorResetTick);
     switch (point.state) {
       case FloatingCursorDragState.Start:
+        _amortizer = 10;
         if (_floatingCursorResetController!.isAnimating) {
           _floatingCursorResetController!.stop();
           _onFloatingCursorResetTick();
@@ -3547,8 +3550,12 @@ class EditableTextState extends State<EditableText>
         _lastTextPosition = currentTextPosition;
         renderEditable.setFloatingCursor(point.state, _lastBoundedOffset!, _lastTextPosition!);
       case FloatingCursorDragState.Update:
-        final Offset centeredPoint = point.offset! - _pointOffsetOrigin!;
+        final Offset centeredPoint = (point.offset! - _pointOffsetOrigin!) / _amortizer;
         final Offset rawCursorOffset = _startCaretCenter! + centeredPoint - _floatingCursorOffset;
+
+        if (_amortizer > 1) {
+          _amortizer--;
+        }
 
         _lastBoundedOffset = renderEditable.calculateBoundedFloatingCursorOffset(rawCursorOffset);
         _lastTextPosition = renderEditable.getPositionForPoint(
